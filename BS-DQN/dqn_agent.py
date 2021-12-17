@@ -1,12 +1,14 @@
 import numpy as np
 import torch as T
 from deep_q_network import DeepQNetwork
+from ensemble_q_network import EnsembleNet
 from replay_memory import ReplayBuffer
 
 class DQNAgent(object):
     def __init__(self, gamma, epsilon, lr, n_actions, input_dims,
-                 mem_size, batch_size, eps_min=0.01, eps_dec=5e-7,
-                 replace=1000, algo=None, env_name=None, chkpt_dir='tmp/dqn'):
+                 mem_size, batch_size, eps_min=0.01, eps_dec=5e-7, n_ensemble=2,
+                 replace=1000, algo=None, env_name=None, chkpt_dir='tmp/bs-dqn'):
+
         self.gamma = gamma
         self.epsilon = epsilon
         self.lr = lr
@@ -22,23 +24,24 @@ class DQNAgent(object):
         self.action_space = [i for i in range(n_actions)]
         self.learn_step_counter = 0
 
+        self.n_ensemble = n_ensemble
+
         self.memory = ReplayBuffer(mem_size, input_dims, n_actions)
 
-        self.q_eval = DeepQNetwork(self.lr, self.n_actions,
-                                    input_dims=self.input_dims,
-                                    name=self.env_name+'_'+self.algo+'_q_eval',
-                                    chkpt_dir=self.chkpt_dir)
+        self.q_eval = EnsembleNet(chkpt_dir=chkpt_dir, name=self.env_name + '_' + self.algo + '_q_eval', n_ensemble=self.n_ensemble, n_actions=self.n_actions, lr=self.lr, input_dims=self.input_dims)
+        self.q_next = EnsembleNet(chkpt_dir=chkpt_dir, name=self.env_name + '_' + self.algo + '_q_next', n_ensemble=self.n_ensemble, n_actions=self.n_actions, lr=self.lr, input_dims=self.input_dims)
 
-        self.q_next = DeepQNetwork(self.lr, self.n_actions,
-                                    input_dims=self.input_dims,
-                                    name=self.env_name+'_'+self.algo+'_q_next',
-                                    chkpt_dir=self.chkpt_dir)
+       
 
     def choose_action(self, observation):
         if np.random.random() > self.epsilon:
-            state = T.tensor([observation],dtype=T.float).to(self.q_eval.device)
-            actions = self.q_eval.forward(state)
-            action = T.argmax(actions).item()
+            state = T.tensor([observation], dtype=T.float).to(self.q_eval.device)
+            evals = self.q_eval.forward(state, None)
+            max_evals_per_head = [evals[head].max(dim=1) for head in range(self.n_ensemble)]
+            values_per_head = T.tensor([eval.values for eval in max_evals_per_head])
+            actions_per_head = T.tensor([eval.indices for eval in max_evals_per_head])
+            best_head = T.argmax(values_per_head)
+            action = actions_per_head[best_head]
         else:
             action = np.random.choice(self.action_space)
 
@@ -63,8 +66,7 @@ class DQNAgent(object):
             self.q_next.load_state_dict(self.q_eval.state_dict())
 
     def decrement_epsilon(self):
-        self.epsilon = self.epsilon - self.eps_dec \
-                           if self.epsilon > self.eps_min else self.eps_min
+        self.epsilon = self.epsilon - self.eps_dec if self.epsilon > self.eps_min else self.eps_min
 
     def save_models(self):
         self.q_eval.save_checkpoint()
@@ -74,24 +76,30 @@ class DQNAgent(object):
         self.q_eval.load_checkpoint()
         self.q_next.load_checkpoint()
 
+
+  
+
     def learn(self):
         if self.memory.mem_cntr < self.batch_size:
             return
 
         self.q_eval.optimizer.zero_grad()
-
         self.replace_target_network()
 
         states, actions, rewards, states_, dones = self.sample_memory()
-        indices = np.arange(self.batch_size)
 
-        q_pred = self.q_eval.forward(states)[indices, actions]
-        q_next = self.q_next.forward(states_).max(dim=1)[0]
+        total_loss = []
+        sample_selections = T.FloatTensor(np.random.randint(2, size=(self.n_ensemble, self.batch_size)))
+        for head in range(self.n_ensemble):
+            q_preds = self.q_eval.forward(states, head)
+            q_nexts = self.q_next.forward(states_, head)
+            q_nexts[dones] = 0.0
 
-        q_next[dones] = 0.0
-        q_target = rewards + self.gamma*q_next
+            q_targets = rewards + self.gamma * q_nexts.max(dim=1).values * sample_selections[head]
+            q_preds = q_preds.max(dim=1).values * sample_selections[head] 
+            total_loss.append(self.q_eval.loss(q_targets, q_preds))
 
-        loss = self.q_eval.loss(q_target, q_pred).to(self.q_eval.device)
+        loss = sum(total_loss) / self.n_ensemble
         loss.backward()
         self.q_eval.optimizer.step()
         self.learn_step_counter += 1

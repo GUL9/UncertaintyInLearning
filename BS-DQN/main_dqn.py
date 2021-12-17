@@ -9,7 +9,7 @@ if __name__ == '__main__':
     #env = gym.make('CartPole-v1')
     best_score = -np.inf
     load_checkpoint = False
-    n_games = 20
+    n_games = 200
 
     agent = DQNAgent(gamma=0.99, epsilon=1, lr=0.0001,
                      input_dims=(env.observation_space.shape),
@@ -21,8 +21,7 @@ if __name__ == '__main__':
     if load_checkpoint:
         agent.load_models()
 
-    fname = agent.algo + '_' + agent.env_name + '_lr' + str(agent.lr) +'_' \
-            + str(n_games) + 'games'
+    fname = agent.algo + '_' + agent.env_name + '_lr' + str(agent.lr) +'_' + str(n_games) + 'games'
     figure_file = 'plots/' + fname + '.png'
     # if you want to record video of your agent playing, do a mkdir tmp && mkdir tmp/dqn-video
     # and uncomment the following 2 lines.
@@ -51,9 +50,12 @@ if __name__ == '__main__':
         steps_array.append(n_steps)
 
         avg_score = np.mean(scores[-100:])
-        print('episode: ', i,'score: ', score,
-             ' average score %.1f' % avg_score, 'best score %.2f' % best_score,
-            'epsilon %.2f' % agent.epsilon, 'steps', n_steps)
+        print('episode: ', i,
+            'score: ', score,
+            'average score: %.1f' % avg_score, 
+            'best score: %.2f' % best_score,
+            'epsilon: %.2f' % agent.epsilon,
+            'steps:', n_steps)
 
         if avg_score > best_score:
             if not load_checkpoint:
