@@ -6,7 +6,7 @@ from replay_memory import ReplayBuffer
 
 class DQNAgent(object):
     def __init__(self, gamma, epsilon, lr, n_actions, input_dims,
-                 mem_size, batch_size, eps_min=0.01, eps_dec=5e-7, n_ensemble=2,
+                 mem_size, batch_size, eps_min=0.01, eps_dec=5e-7, n_ensemble=3,
                  replace=1000, algo=None, env_name=None, chkpt_dir='tmp/bs-dqn'):
 
         self.gamma = gamma
@@ -37,11 +37,15 @@ class DQNAgent(object):
         if np.random.random() > self.epsilon:
             state = T.tensor([observation], dtype=T.float).to(self.q_eval.device)
             evals = self.q_eval.forward(state, None)
-            max_evals_per_head = [evals[head].max(dim=1) for head in range(self.n_ensemble)]
-            values_per_head = T.tensor([eval.values for eval in max_evals_per_head])
-            actions_per_head = T.tensor([eval.indices for eval in max_evals_per_head])
-            best_head = T.argmax(values_per_head)
-            action = actions_per_head[best_head]
+            values = []
+            actions = []
+            for head in range(self.n_ensemble):
+                values.append(evals[head].max())
+                actions.append(evals[head].argmax())
+
+            best_head = T.tensor(values).argmax()
+            action = actions[best_head]
+        
         else:
             action = np.random.choice(self.action_space)
 
@@ -97,10 +101,11 @@ class DQNAgent(object):
 
             q_targets = rewards + self.gamma * q_nexts.max(dim=1).values * sample_selections[head]
             q_preds = q_preds.max(dim=1).values * sample_selections[head] 
-            total_loss.append(self.q_eval.loss(q_targets, q_preds))
+            total_loss.append(self.q_eval.loss(q_targets, q_preds).to(self.q_eval.device))
 
         loss = sum(total_loss) / self.n_ensemble
         loss.backward()
+
         self.q_eval.optimizer.step()
         self.learn_step_counter += 1
 

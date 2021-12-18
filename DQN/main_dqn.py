@@ -9,7 +9,7 @@ if __name__ == '__main__':
     #env = gym.make('CartPole-v1')
     best_score = -np.inf
     load_checkpoint = False
-    n_games = 20
+    n_games = 200
 
     agent = DQNAgent(gamma=0.99, epsilon=1, lr=0.0001,
                      input_dims=(env.observation_space.shape),

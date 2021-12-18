@@ -45,6 +45,17 @@ class CoreNet(nn.Module):
         x = x.view(-1, reshape)
         return x
 
+    def print_weights(self):
+        print("CORE NET: conv1")
+        for parameter in self.conv1.named_parameters():
+            print(parameter)
+        print("CORE NET: conv2")
+        for parameter in self.conv2.named_parameters():
+            print(parameter)
+        print("CORE NET: conv3")
+        for parameter in self.conv3.named_parameters():
+            print(parameter)
+
 class HeadNet(nn.Module):
     def __init__(self, n_actions):
         super(HeadNet, self).__init__()
@@ -58,6 +69,14 @@ class HeadNet(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
+    
+    def print_weights(self):
+        print("HEAD: fc1")
+        for parameter in self.fc1.named_parameters():
+            print(parameter)
+        print("HEAD: fc2")
+        for parameter in self.fc2.named_parameters():
+            print(parameter)
     
 
 class EnsembleNet(nn.Module):
@@ -91,6 +110,10 @@ class EnsembleNet(nn.Module):
         else:
             return self.net_list[head](self.core_net(x))
 
+    def print_weights(self):
+        self.core_net.print_weights()
+        for head in self.net_list:
+            head.print_weights()
 
     def save_checkpoint(self):
         print('... saving checkpoint ...')
