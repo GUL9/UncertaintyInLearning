@@ -28,7 +28,7 @@ class DQNAgent(object):
         self.batch_size = batch_size
         self.replace_target_cnt = replace
         self.learn_step_counter = 0
-        self.advice_budget = advice_budget = 10000
+        self.advice_budget = 10000
 
         self.memory = ReplayBuffer(mem_size, input_dims, n_actions)
 
@@ -37,6 +37,7 @@ class DQNAgent(object):
         self.q_advice = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name='PongNoFrameskip-v4_DQNAgent_q_eval', input_dims=self.input_dims, chkpt_dir=self.advice_dir)
         print("LOADING ADVICE MODEL: " + "PongNoFrameskip-v4_DQNAgent_q_eval")
         self.q_advice.load_checkpoint()
+    
 
     def choose_action(self, observation):
         state = T.tensor([observation], dtype=T.float).to(self.q_eval.device)
@@ -55,10 +56,11 @@ class DQNAgent(object):
             else: 
                 action = np.random.choice(self.action_space)
         else:
+            self.advice_budget -= 1
             print("TAKING ADVICE")
+            print(f'Current budget: {self.advice_budget}')
             advice = self.q_advice.forward(state)
             action = T.argmax(advice).item()
-            self.advice_budget -= 1
         return action
 
     def store_transition(self, state, action, reward, state_, done):
@@ -103,7 +105,7 @@ class DQNAgent(object):
         states, actions, rewards, states_, dones = self.sample_memory()
 
         total_loss = []
-        sample_selections = T.FloatTensor(np.random.randint(2, size=(self.n_ensemble, self.batch_size)))
+        sample_selections = T.FloatTensor(np.random.randint(2, size=(self.n_ensemble, self.batch_size))).to(self.q_eval.device)
         for head in range(self.n_ensemble):
             q_preds = self.q_eval.forward(states, head)
             q_nexts = self.q_next.forward(states_, head)

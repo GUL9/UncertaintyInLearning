@@ -29,7 +29,7 @@ if __name__ == '__main__':
     env = wrappers.Monitor(env, "tmp/dqn-video",
                         video_callable=lambda episode_id: True, force=True)
     n_steps = 0
-    scores, eps_history, steps_array = [], [], []
+    scores, eps_history, steps_array, budget = [], [], [], []
 
     for i in range(n_games):
         done = False
@@ -47,6 +47,7 @@ if __name__ == '__main__':
                 agent.learn()
             observation = observation_
             n_steps += 1
+        budget.append(agent.advice_budget)
         scores.append(score)
         steps_array.append(n_steps)
 
