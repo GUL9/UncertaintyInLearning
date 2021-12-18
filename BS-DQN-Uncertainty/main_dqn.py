@@ -29,15 +29,17 @@ if __name__ == '__main__':
     env = wrappers.Monitor(env, "tmp/dqn-video",
                         video_callable=lambda episode_id: True, force=True)
     n_steps = 0
-    scores, eps_history, steps_array, budget = [], [], [], []
+    scores, eps_history, steps_array, budget, uncertainty = [], [], [], [], []
 
     for i in range(n_games):
         done = False
         observation = env.reset()
 
         score = 0
+        game_uncertainty = []
         while not done:
-            action = agent.choose_action(observation)
+            action, uncertainty = agent.choose_action(observation)
+            game_uncertainty.append(uncertainty)
             observation_, reward, done, info = env.step(action)
             score += reward
 
@@ -47,6 +49,7 @@ if __name__ == '__main__':
                 agent.learn()
             observation = observation_
             n_steps += 1
+        uncertainty.append(np.mean(game_uncertainty))
         budget.append(agent.advice_budget)
         scores.append(score)
         steps_array.append(n_steps)

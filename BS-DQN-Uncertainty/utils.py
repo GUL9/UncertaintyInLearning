@@ -4,17 +4,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import gym
 import csv 
-def save_scores_csv(scores, epsilons, file_path, budget=None):
+def save_scores_csv(scores, epsilons, file_path, budget=None, uncertainty=None):
     f = open(file_path, 'w')
     csv_writer = csv.writer(f)
-    if budget:
-        csv_writer.writerow(['episode', 'score', 'epsilon', 'budget'])
-        for episode in range(len(scores)):
-            csv_writer.writerow([episode, scores[episode], epsilons[episode], budget[episode]])
-    else:
-        csv_writer.writerow(['episode', 'score', 'epsilon'])
-        for episode in range(len(scores)):
-            csv_writer.writerow([episode, scores[episode], epsilons[episode]])
+    header = ['episode', 'score', 'epsilon', 'budget', 'uncertainty']
+    csv_writer.writerow(header)
+
+    for episode in range(len(scores)):
+        csv_writer.writerow([episode, scores[episode], epsilons[episode], budget[episode] if budget else None, uncertainty[episode] if uncertainty else None])
+
     f.close()
 
 

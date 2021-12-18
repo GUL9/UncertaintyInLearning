@@ -35,32 +35,41 @@ class DQNAgent(object):
         self.q_eval = EnsembleNet(chkpt_dir=chkpt_dir, name=self.env_name + '_' + self.algo + '_q_eval', n_ensemble=self.n_ensemble, n_actions=self.n_actions, lr=self.lr, input_dims=self.input_dims)
         self.q_next = EnsembleNet(chkpt_dir=chkpt_dir, name=self.env_name + '_' + self.algo + '_q_next', n_ensemble=self.n_ensemble, n_actions=self.n_actions, lr=self.lr, input_dims=self.input_dims)
         self.q_advice = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name='PongNoFrameskip-v4_DQNAgent_q_eval', input_dims=self.input_dims, chkpt_dir=self.advice_dir)
-        print("LOADING ADVICE MODEL: " + "PongNoFrameskip-v4_DQNAgent_q_eval")
         self.q_advice.load_checkpoint()
     
 
     def choose_action(self, observation):
         state = T.tensor([observation], dtype=T.float).to(self.q_eval.device)
         evals = self.q_eval.forward(state, None)
-        values = []
-        actions = []
+        values, actions = [], []
+
         for head in range(self.n_ensemble):
             values.append(evals[head].max())
             actions.append(evals[head].argmax())
 
         uncertainty = T.var(T.tensor(values))
-        if uncertainty < 0.01 or self.advice_budget <= 0:
-            if np.random.random() > self.epsilon:
-                best_head = T.tensor(values).argmax()
-                action = actions[best_head]
-            else: 
-                action = np.random.choice(self.action_space)
+        if uncertainty < 0.1 or self.advice_budget <= 0:
+            action = self._std_policy(values, actions)
         else:
-            self.advice_budget -= 1
-            print("TAKING ADVICE")
-            print(f'Current budget: {self.advice_budget}')
-            advice = self.q_advice.forward(state)
-            action = T.argmax(advice).item()
+            action = self._advice_policy(state)
+        return action, uncertainty
+
+    def _advice_policy(self, state):
+        advice = self.q_advice.forward(state)
+        action = T.argmax(advice).item()
+
+        self.advice_budget -= 1
+        print(f'Current budget: {self.advice_budget}')
+        
+        return action
+
+    def _std_policy(self, values, actions):
+        if np.random.random() > self.epsilon:
+            best_head = T.tensor(values).argmax()
+            action = actions[best_head]
+        else: 
+            action = np.random.choice(self.action_space)
+            
         return action
 
     def store_transition(self, state, action, reward, state_, done):
