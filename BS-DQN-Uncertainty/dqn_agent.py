@@ -7,47 +7,58 @@ from replay_memory import ReplayBuffer
 class DQNAgent(object):
     def __init__(self, gamma, epsilon, lr, n_actions, input_dims,
                  mem_size, batch_size, eps_min=0.01, eps_dec=5e-7, n_ensemble=5,
-                 replace=1000, algo=None, env_name=None, chkpt_dir='tmp/bs-dqn'):
+                 replace=1000, algo=None, env_name=None, chkpt_dir='models/'):
+
+        self.env_name = env_name
+        self.algo = algo
+        self.chkpt_dir = chkpt_dir
+        self.advice_dir = chkpt_dir + 'advice_model'
 
         self.gamma = gamma
         self.epsilon = epsilon
-        self.lr = lr
-        self.n_actions = n_actions
-        self.input_dims = input_dims
-        self.batch_size = batch_size
         self.eps_min = eps_min
         self.eps_dec = eps_dec
-        self.replace_target_cnt = replace
-        self.algo = algo
-        self.env_name = env_name
-        self.chkpt_dir = chkpt_dir
-        self.action_space = [i for i in range(n_actions)]
-        self.learn_step_counter = 0
+        self.lr = lr
 
         self.n_ensemble = n_ensemble
+        self.n_actions = n_actions
+        self.action_space = [i for i in range(n_actions)]
+
+        self.input_dims = input_dims
+        self.batch_size = batch_size
+        self.replace_target_cnt = replace
+        self.learn_step_counter = 0
+        self.advice_budget = advice_budget = 10000
 
         self.memory = ReplayBuffer(mem_size, input_dims, n_actions)
 
         self.q_eval = EnsembleNet(chkpt_dir=chkpt_dir, name=self.env_name + '_' + self.algo + '_q_eval', n_ensemble=self.n_ensemble, n_actions=self.n_actions, lr=self.lr, input_dims=self.input_dims)
         self.q_next = EnsembleNet(chkpt_dir=chkpt_dir, name=self.env_name + '_' + self.algo + '_q_next', n_ensemble=self.n_ensemble, n_actions=self.n_actions, lr=self.lr, input_dims=self.input_dims)
-
-       
+        self.q_advice = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name='PongNoFrameskip-v4_DQNAgent_q_eval', input_dims=self.input_dims, chkpt_dir=self.advice_dir)
+        print("LOADING ADVICE MODEL: " + "PongNoFrameskip-v4_DQNAgent_q_eval")
+        self.q_advice.load_checkpoint()
 
     def choose_action(self, observation):
-        if np.random.random() > self.epsilon:
-            state = T.tensor([observation], dtype=T.float).to(self.q_eval.device)
-            evals = self.q_eval.forward(state, None)
-            values = []
-            actions = []
-            for head in range(self.n_ensemble):
-                values.append(evals[head].max())
-                actions.append(evals[head].argmax())
+        state = T.tensor([observation], dtype=T.float).to(self.q_eval.device)
+        evals = self.q_eval.forward(state, None)
+        values = []
+        actions = []
+        for head in range(self.n_ensemble):
+            values.append(evals[head].max())
+            actions.append(evals[head].argmax())
 
-            best_head = T.tensor(values).argmax()
-            action = actions[best_head]
+        uncertainty = T.var(T.tensor(values))
+        if uncertainty < 0.01 or self.advice_budget <= 0:
+            if np.random.random() > self.epsilon:
+                best_head = T.tensor(values).argmax()
+                action = actions[best_head]
+            else: 
+                action = np.random.choice(self.action_space)
         else:
-            action = np.random.choice(self.action_space)
-
+            print("TAKING ADVICE")
+            advice = self.q_advice.forward(state)
+            action = T.argmax(advice).item()
+            self.advice_budget -= 1
         return action
 
     def store_transition(self, state, action, reward, state_, done):
@@ -100,10 +111,15 @@ class DQNAgent(object):
 
             q_targets = rewards + self.gamma * q_nexts.max(dim=1).values * sample_selections[head]
             q_preds = q_preds.max(dim=1).values * sample_selections[head] 
-            total_loss.append(self.q_eval.loss(q_targets, q_preds))
+            total_loss.append(self.q_eval.loss(q_targets, q_preds).to(self.q_eval.device))
 
         loss = sum(total_loss) / self.n_ensemble
         loss.backward()
+        for param in self.q_eval.core_net.parameters():
+            if param.grad is not None:
+                # divide grads in core
+                param.grad.data *=1.0/float(self.n_ensemble)
+
         self.q_eval.optimizer.step()
         self.learn_step_counter += 1
 
