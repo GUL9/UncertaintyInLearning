@@ -52,6 +52,7 @@ class DQNAgent(object):
         if uncertainty < 0.001 or self.advice_budget <= 0:
             action = self._std_policy(values, actions)
         else:
+            print(uncertainty)
             action = self._advice_policy(state)
         return action, uncertainty
 
@@ -60,7 +61,6 @@ class DQNAgent(object):
         action = T.argmax(advice).item()
 
         self.advice_budget -= 1
-        print(f'Current budget: {self.advice_budget}')
         
         return action
 
