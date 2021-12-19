@@ -15,7 +15,7 @@ if __name__ == '__main__':
                      input_dims=(env.observation_space.shape),
                      n_actions=env.action_space.n, mem_size=50000, eps_min=0.1,
                      batch_size=32, replace=1000, eps_dec=1e-5,
-                     chkpt_dir='models/', algo='DQNAgent',
+                     chkpt_dir='models/', algo='DropoutAgent',
                      env_name='PongNoFrameskip-v4')
 
     if load_checkpoint:
@@ -26,8 +26,7 @@ if __name__ == '__main__':
     score_file = 'tmp/scores/' + fname + '.csv'
     # if you want to record video of your agent playing, do a mkdir tmp && mkdir tmp/dqn-video
     # and uncomment the following 2 lines.
-    env = wrappers.Monitor(env, "tmp/dqn-video",
-                        video_callable=lambda episode_id: True, force=True)
+    env = wrappers.Monitor(env, "tmp/dqn-video", video_callable=lambda episode_id: True, force=True)
     n_steps = 0
     scores, eps_history, steps_array, budget, uncertainties = [], [], [], [], []
 
@@ -40,6 +39,7 @@ if __name__ == '__main__':
         while not done:
             action, uncertainty = agent.choose_action(observation)
             game_uncertainty.append(uncertainty)
+            env.render()
             observation_, reward, done, info = env.step(action)
             score += reward
 

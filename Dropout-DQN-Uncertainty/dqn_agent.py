@@ -42,18 +42,23 @@ class DQNAgent(object):
     def choose_action(self, observation):
         state = T.tensor([observation], dtype=T.float).to(self.q_eval.device)
         evals = T.tensor([]).to(self.q_eval.device)
+        
         for _ in range(10):
             evals = T.cat((evals, self.q_eval.forward(state)), 0)
         
         action_means = T.mean(evals, dim=0)
         best_action = T.argmax(action_means).item()
-        uncertainty = T.var(evals, dim=0)[best_action]
+        uncertainty = T.var(evals, dim=0)[best_action].item()
 
         if uncertainty < 0.01 or self.advice_budget <= 0:
-            action = best_action
+            action = self._std_policy(best_action)
         else:
             action = self._advice_policy(state)
+
         return action, uncertainty
+
+    def _std_policy(self, best_action):
+        return best_action if np.random.random() > self.epsilon else np.random.choice(self.action_space)
 
     def _advice_policy(self, state):
         advice = self.q_advice.forward(state)
@@ -91,9 +96,6 @@ class DQNAgent(object):
         self.q_eval.load_checkpoint()
         self.q_next.load_checkpoint()
 
-
-  
-
     def learn(self):
         if self.memory.mem_cntr < self.batch_size:
             return
@@ -107,9 +109,10 @@ class DQNAgent(object):
 
         q_pred = self.q_eval.forward(states)[indices, actions]
         q_next = self.q_next.forward(states_).max(dim=1)[0]
+
         q_next[dones] = 0.0
         q_target = rewards + self.gamma*q_next
-
+        
         loss = self.q_eval.loss(q_target, q_pred).to(self.q_eval.device)
         loss.backward()
         self.q_eval.optimizer.step()
