@@ -61,7 +61,7 @@ if __name__ == '__main__':
             'epsilon: %.2f' % agent.epsilon,
             'steps:', n_steps,
             'budget:', budget[-1],
-            'uncertainty: %.2f ' % uncertainties[-1])
+            'uncertainty: %.4f ' % uncertainties[-1])
 
         if avg_score > best_score:
             if not load_checkpoint:
