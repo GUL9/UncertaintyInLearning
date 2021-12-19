@@ -34,15 +34,18 @@ class DropoutQNetwork(nn.Module):
         dims = self.conv3(dims)
         return int(np.prod(dims.size()))
 
-    def forward(self, state):
+    def forward(self, state, drop=True):
         conv1 = F.relu(self.conv1(state))
-        conv1 = self.dropout(conv1)
+        if drop:
+            conv1 = self.dropout(conv1)
 
         conv2 = F.relu(self.conv2(conv1))
-        conv2 = self.dropout(conv2)
+        if drop:
+            conv2 = self.dropout(conv2)
 
         conv3 = F.relu(self.conv3(conv2))
-        conv3 = self.dropout(conv3)
+        if drop:
+            conv3 = self.dropout(conv3)
         
         # conv3 shape is BS x n_filters x H x W
         conv_state = conv3.view(conv3.size()[0], -1)

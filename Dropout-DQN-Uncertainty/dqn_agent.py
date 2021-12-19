@@ -42,7 +42,7 @@ class DQNAgent(object):
         evals = T.tensor([]).to(self.q_eval.device)
 
         for _ in range(10):
-            evals = T.cat((evals, self.q_eval.forward(state)), 0)
+            evals = T.cat((evals, self.q_eval.forward(state, drop=True)), 0)
         
         action_means = T.mean(evals, dim=0)
         best_action = T.argmax(action_means).item()
@@ -105,8 +105,8 @@ class DQNAgent(object):
         states, actions, rewards, states_, dones = self.sample_memory()
         indices = np.arange(self.batch_size)
 
-        q_pred = self.q_eval.forward(states)[indices, actions]
-        q_next = self.q_next.forward(states_).max(dim=1)[0]
+        q_pred = self.q_eval.forward(states, drop=False)[indices, actions]
+        q_next = self.q_next.forward(states_, drop=False).max(dim=1)[0]
 
         q_next[dones] = 0.0
         q_target = rewards + self.gamma*q_next
