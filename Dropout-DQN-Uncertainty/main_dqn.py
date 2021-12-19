@@ -44,8 +44,7 @@ if __name__ == '__main__':
             score += reward
 
             if not load_checkpoint:
-                agent.store_transition(observation, action,
-                                     reward, observation_, done)
+                agent.store_transition(observation, action, reward, observation_, done)
                 agent.learn()
             observation = observation_
             n_steps += 1

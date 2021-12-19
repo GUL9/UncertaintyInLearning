@@ -34,43 +34,32 @@ class DQNAgent(object):
         self.memory = ReplayBuffer(mem_size, input_dims, n_actions)
 
         self.q_eval = DropoutQNetwork(lr=self.lr, n_actions=self.n_actions, name=self.env_name+'_'+self.algo+'_q_eval', input_dims=self.input_dims, chkpt_dir=self.chkpt_dir)
-        self.q_next = DropoutQNetwork(lr=self.lr, n_actions=self.n_actions, name=self.env_name+'_'+self.algo+'_q_eval', input_dims=self.input_dims, chkpt_dir=self.chkpt_dir)
+        self.q_next = DropoutQNetwork(lr=self.lr, n_actions=self.n_actions, name=self.env_name+'_'+self.algo+'_q_next', input_dims=self.input_dims, chkpt_dir=self.chkpt_dir)
         self.q_advice = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name='PongNoFrameskip-v4_DQNAgent_q_eval', input_dims=self.input_dims, chkpt_dir=self.advice_dir)
         self.q_advice.load_checkpoint()
     
 
     def choose_action(self, observation):
         state = T.tensor([observation], dtype=T.float).to(self.q_eval.device)
-        evals, values, actions = [], [], []
+        evals = T.tensor([]).to(self.q_eval.device)
         for _ in range(10):
-            eval = self.q_eval.forward(state)
-            evals.append(eval)
-            values.append(T.max(eval))
-            actions.append(T.argmax(eval))
+            evals = T.cat((evals, self.q_eval.forward(state)), 0)
+        
+        action_means = T.mean(evals, dim=0)
+        best_action = T.argmax(action_means).item()
+        uncertainty = T.var(evals, dim=0)[best_action]
 
-        uncertainty = T.var(T.tensor(values))
-        if uncertainty < 0.001 or self.advice_budget <= 0:
-            action = self._std_policy(values, actions)
+        if uncertainty < 0.01 or self.advice_budget <= 0:
+            action = best_action
         else:
-            print(uncertainty)
             action = self._advice_policy(state)
         return action, uncertainty
 
     def _advice_policy(self, state):
         advice = self.q_advice.forward(state)
         action = T.argmax(advice).item()
-
         self.advice_budget -= 1
         
-        return action
-
-    def _std_policy(self, values, actions):
-        if np.random.random() > self.epsilon:
-            best_head = T.tensor(values).argmax()
-            action = actions[best_head]
-        else: 
-            action = np.random.choice(self.action_space)
-            
         return action
 
     def store_transition(self, state, action, reward, state_, done):
@@ -118,7 +107,6 @@ class DQNAgent(object):
 
         q_pred = self.q_eval.forward(states)[indices, actions]
         q_next = self.q_next.forward(states_).max(dim=1)[0]
-
         q_next[dones] = 0.0
         q_target = rewards + self.gamma*q_next
 
