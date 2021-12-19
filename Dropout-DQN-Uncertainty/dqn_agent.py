@@ -2,12 +2,11 @@ import numpy as np
 import torch as T
 from deep_q_network import DropoutQNetwork
 from deep_q_network import DeepQNetwork
-from ensemble_q_network import EnsembleNet
 from replay_memory import ReplayBuffer
 
 class DQNAgent(object):
     def __init__(self, gamma, epsilon, lr, n_actions, input_dims,
-                 mem_size, batch_size, eps_min=0.01, eps_dec=5e-7, n_ensemble=5,
+                 mem_size, batch_size, eps_min=0.05, eps_dec=5e-7,
                  replace=1000, algo=None, env_name=None, chkpt_dir='models/'):
 
         self.env_name = env_name
@@ -21,7 +20,6 @@ class DQNAgent(object):
         self.eps_dec = eps_dec
         self.lr = lr
 
-        self.n_ensemble = n_ensemble
         self.n_actions = n_actions
         self.action_space = [i for i in range(n_actions)]
 
@@ -29,7 +27,7 @@ class DQNAgent(object):
         self.batch_size = batch_size
         self.replace_target_cnt = replace
         self.learn_step_counter = 0
-        self.advice_budget = 10000
+        self.advice_budget = 5000
 
         self.memory = ReplayBuffer(mem_size, input_dims, n_actions)
 
@@ -42,7 +40,7 @@ class DQNAgent(object):
     def choose_action(self, observation):
         state = T.tensor([observation], dtype=T.float).to(self.q_eval.device)
         evals = T.tensor([]).to(self.q_eval.device)
-        
+
         for _ in range(10):
             evals = T.cat((evals, self.q_eval.forward(state)), 0)
         
@@ -50,7 +48,7 @@ class DQNAgent(object):
         best_action = T.argmax(action_means).item()
         uncertainty = T.var(evals, dim=0)[best_action].item()
 
-        if uncertainty < 0.01 or self.advice_budget <= 0:
+        if uncertainty < 0.05 or self.advice_budget <= 0:
             action = self._std_policy(best_action)
         else:
             action = self._advice_policy(state)
