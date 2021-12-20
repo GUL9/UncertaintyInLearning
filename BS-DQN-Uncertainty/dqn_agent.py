@@ -28,7 +28,7 @@ class DQNAgent(object):
         self.batch_size = batch_size
         self.replace_target_cnt = replace
         self.learn_step_counter = 0
-        self.advice_budget = 10000
+        self.advice_budget = 50000
 
         self.memory = ReplayBuffer(mem_size, input_dims, n_actions)
 
