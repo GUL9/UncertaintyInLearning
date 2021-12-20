@@ -1,6 +1,7 @@
 # Videos
 *.mp4
 *.meta.json
+!*299.mp4
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
