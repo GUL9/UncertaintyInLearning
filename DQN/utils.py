@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import gym
+import csv
 
 def save_scores_csv(scores, epsilons, file_path, budget=None, uncertainty=None):
     f = open(file_path, 'w')
