@@ -81,7 +81,10 @@ class EnsembleNet(nn.Module):
         return self.core_net(x)
 
     def _heads(self, x):
-        return [net(x) for net in self.net_list]
+        preds = T.tensor([]).to(self.device)
+        for head in self.net_list:
+            preds = T.cat((preds, head(x)), 0)
+        return preds
 
     def forward(self, x, head):
         if head is None:
@@ -93,9 +96,10 @@ class EnsembleNet(nn.Module):
 
 
     def save_checkpoint(self):
-        print(f'... saving checkpoint to: {self.checkpoint_file} ...')
+        print('... saving checkpoint ...')
         T.save(self.state_dict(), self.checkpoint_file)
 
     def load_checkpoint(self):
-        print(f'... loading checkpoint from {self.checkpoint_file}...')
+        print('... loading checkpoint ...')
+        print(self.checkpoint_file)
         self.load_state_dict(T.load(self.checkpoint_file))
