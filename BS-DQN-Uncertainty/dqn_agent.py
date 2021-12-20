@@ -41,15 +41,13 @@ class DQNAgent(object):
     def choose_action(self, observation):
         state = T.tensor([observation], dtype=T.float).to(self.q_eval.device)
         evals = self.q_eval.forward(state, None)
-        values, actions = [], []
-
-        for head in range(self.n_ensemble):
-            values.append(evals[head].max())
-            actions.append(evals[head].argmax())
-
-        uncertainty = T.var(T.tensor(values))
+        
+        action_means = T.mean(evals, dim=0)
+        best_action = T.argmax(action_means).item()
+        uncertainty = T.var(evals, dim=0)[best_action].item()
+        
         if uncertainty < 0.1 or self.advice_budget <= 0:
-            action = self._std_policy(values, actions)
+            action = self._std_policy(best_action)
         else:
             action = self._advice_policy(state)
         return action, uncertainty
@@ -59,14 +57,12 @@ class DQNAgent(object):
         action = T.argmax(advice).item()
 
         self.advice_budget -= 1
-        print(f'Current budget: {self.advice_budget}')
         
         return action
 
-    def _std_policy(self, values, actions):
+    def _std_policy(self, best_action):
         if np.random.random() > self.epsilon:
-            best_head = T.tensor(values).argmax()
-            action = actions[best_head]
+            action = best_action
         else: 
             action = np.random.choice(self.action_space)
             
@@ -126,10 +122,6 @@ class DQNAgent(object):
 
         loss = sum(total_loss) / self.n_ensemble
         loss.backward()
-        for param in self.q_eval.core_net.parameters():
-            if param.grad is not None:
-                # divide grads in core
-                param.grad.data *=1.0/float(self.n_ensemble)
 
         self.q_eval.optimizer.step()
         self.learn_step_counter += 1
