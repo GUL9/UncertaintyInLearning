@@ -1,7 +1,7 @@
 import gym
 import numpy as np
 from dqn_agent import DQNAgent
-from utils import plot_learning_curve, make_env
+from utils import plot_learning_curve, make_env, save_scores_csv
 from gym import wrappers
 
 if __name__ == '__main__':
@@ -9,13 +9,13 @@ if __name__ == '__main__':
     #env = gym.make('CartPole-v1')
     best_score = -np.inf
     load_checkpoint = False
-    n_games = 200
+    n_games = 300
 
     agent = DQNAgent(gamma=0.99, epsilon=1, lr=0.0001,
                      input_dims=(env.observation_space.shape),
-                     n_actions=env.action_space.n, mem_size=50000, eps_min=0.1,
+                     n_actions=env.action_space.n, mem_size=50000, eps_min=0.05,
                      batch_size=32, replace=1000, eps_dec=1e-5,
-                     chkpt_dir='models/', algo='DQNAgent',
+                     chkpt_dir='models/', algo='DQNAgent300Games',
                      env_name='PongNoFrameskip-v4')
 
     if load_checkpoint:
@@ -24,6 +24,8 @@ if __name__ == '__main__':
     fname = agent.algo + '_' + agent.env_name + '_lr' + str(agent.lr) +'_' \
             + str(n_games) + 'games'
     figure_file = 'plots/' + fname + '.png'
+    score_file = 'tmp/scores/' + fname + '.csv'
+
     # if you want to record video of your agent playing, do a mkdir tmp && mkdir tmp/dqn-video
     # and uncomment the following 2 lines.
     env = wrappers.Monitor(env, "tmp/dqn-video",
@@ -38,6 +40,7 @@ if __name__ == '__main__':
         score = 0
         while not done:
             action = agent.choose_action(observation)
+            env.render()
             observation_, reward, done, info = env.step(action)
             score += reward
 
@@ -62,5 +65,5 @@ if __name__ == '__main__':
 
         eps_history.append(agent.epsilon)
 
-    x = [i+1 for i in range(len(scores))]
+    save_scores_csv(scores, eps_history, score_file)
     plot_learning_curve(steps_array, scores, eps_history, figure_file)

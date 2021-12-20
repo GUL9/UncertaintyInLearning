@@ -4,6 +4,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import gym
 
+def save_scores_csv(scores, epsilons, file_path, budget=None, uncertainty=None):
+    f = open(file_path, 'w')
+    csv_writer = csv.writer(f)
+    header = ['episode', 'score', 'epsilon', 'budget', 'uncertainty']
+    csv_writer.writerow(header)
+
+    for episode in range(len(scores)):
+        csv_writer.writerow([episode, scores[episode], epsilons[episode], budget[episode] if budget else None, uncertainty[episode] if uncertainty else None])
+
+    f.close()
+
 def plot_learning_curve(x, scores, epsilons, filename, lines=None):
     fig=plt.figure()
     ax=fig.add_subplot(111, label="1")
