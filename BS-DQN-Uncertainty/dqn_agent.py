@@ -112,12 +112,13 @@ class DQNAgent(object):
         total_loss = []
         sample_selections = T.FloatTensor(np.random.randint(2, size=(self.n_ensemble, self.batch_size))).to(self.q_eval.device)
         for head in range(self.n_ensemble):
-            q_preds = self.q_eval.forward(states, head)
-            q_nexts = self.q_next.forward(states_, head)
+            indices = np.arange(self.batch_size)
+            q_preds = self.q_eval.forward(states, head)[indices, actions]
+            q_nexts = self.q_next.forward(states_, head).max(dim=1).values
             q_nexts[dones] = 0.0
-
-            q_targets = rewards + self.gamma * q_nexts.max(dim=1).values * sample_selections[head]
-            q_preds = q_preds.max(dim=1).values * sample_selections[head] 
+            
+            q_targets = rewards + self.gamma * q_nexts * sample_selections[head]
+            q_preds = q_preds * sample_selections[head] 
             total_loss.append(self.q_eval.loss(q_targets, q_preds).to(self.q_eval.device))
 
         loss = sum(total_loss) / self.n_ensemble
