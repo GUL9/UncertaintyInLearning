@@ -27,7 +27,7 @@ class DQNAgent(object):
         self.batch_size = batch_size
         self.replace_target_cnt = replace
         self.learn_step_counter = 0
-        self.advice_budget = 5000
+        self.advice_budget = 50000
 
         self.memory = ReplayBuffer(mem_size, input_dims, n_actions)
 
@@ -48,7 +48,7 @@ class DQNAgent(object):
         best_action = T.argmax(action_means).item()
         uncertainty = T.var(evals, dim=0)[best_action].item()
 
-        if uncertainty < 0.05 or self.advice_budget <= 0:
+        if uncertainty < 0.1 or self.advice_budget <= 0:
             action = self._std_policy(best_action)
         else:
             action = self._advice_policy(state)

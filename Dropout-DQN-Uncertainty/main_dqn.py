@@ -13,9 +13,9 @@ if __name__ == '__main__':
 
     agent = DQNAgent(gamma=0.99, epsilon=1, lr=0.0001,
                      input_dims=(env.observation_space.shape),
-                     n_actions=env.action_space.n, mem_size=50000, eps_min=0.01,
-                     batch_size=32, replace=1000, eps_dec=7e-6,
-                     chkpt_dir='models/', algo='DropoutAgent2',
+                     n_actions=env.action_space.n, mem_size=50000, eps_min=0.05,
+                     batch_size=32, replace=1000, eps_dec=1e-5,
+                     chkpt_dir='models/', algo='DropoutAgent3UQ01',
                      env_name='PongNoFrameskip-v4')
 
     if load_checkpoint:
