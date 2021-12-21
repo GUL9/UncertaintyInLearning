@@ -47,7 +47,7 @@ class DQNAgent(object):
     def choose_action(self, observation):
         state = T.tensor([observation], dtype=T.float).to(self.q_eval.device)
         evals = self.q_eval.forward(state, None)
-        a = T.tensor([])
+        a = T.tensor([]).to(self.q_eval.device)
         for head_eval in evals:
             a = T.cat((a, head_eval), dim=0)
         evals = a

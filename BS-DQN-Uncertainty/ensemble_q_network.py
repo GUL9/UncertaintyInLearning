@@ -130,15 +130,12 @@ class EnsembleWithPrior(nn.Module):
     def _forward_single_head(self, x, head):
 
         if self.prior_scale > 0.:
-            a = self.net(x, head) + self.prior_scale * self.prior(x, head).detach()
-            print(a)
-            return a
+            return self.net(x, head) + self.prior_scale * self.prior(x, head).detach()
         else:
             return self.net(x, head)
 
     def forward(self, x, head):
         if hasattr(self.net, "head_nets"):
-            print(head)
             return self._forward_all_heads(x) if head is None else  self._forward_single_head(x, head) 
         else:
             raise ValueError("Ensemble missing head nets. Must have attribute: head_nets")
