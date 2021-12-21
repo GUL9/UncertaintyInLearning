@@ -1,7 +1,7 @@
 import numpy as np
 import torch as T
 from deep_q_network import DeepQNetwork
-from ensemble_q_network import EnsembleNet
+from ensemble_q_network import EnsembleNet, EnsembleWithPrior
 from replay_memory import ReplayBuffer
 
 class DQNAgent(object):
@@ -32,8 +32,14 @@ class DQNAgent(object):
 
         self.memory = ReplayBuffer(mem_size, input_dims, n_actions)
 
+        self.q_prior = EnsembleNet(chkpt_dir=chkpt_dir, name=self.env_name + '_' + self.algo + '_q_prior', n_ensemble=self.n_ensemble, n_actions=self.n_actions, lr=self.lr, input_dims=self.input_dims)
         self.q_eval = EnsembleNet(chkpt_dir=chkpt_dir, name=self.env_name + '_' + self.algo + '_q_eval', n_ensemble=self.n_ensemble, n_actions=self.n_actions, lr=self.lr, input_dims=self.input_dims)
         self.q_next = EnsembleNet(chkpt_dir=chkpt_dir, name=self.env_name + '_' + self.algo + '_q_next', n_ensemble=self.n_ensemble, n_actions=self.n_actions, lr=self.lr, input_dims=self.input_dims)
+
+        self.q_prior.init_heads()
+        self.q_eval = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_q_eval', self.q_eval, self.q_prior, prior_scale=10, lr=lr)
+        self.q_next = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_q_next', self.q_next, self.q_prior, prior_scale=10, lr=lr)
+
         self.q_advice = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name='PongNoFrameskip-v4_DQNAgent_q_eval', input_dims=self.input_dims, chkpt_dir=self.advice_dir)
         self.q_advice.load_checkpoint()
     
@@ -41,7 +47,10 @@ class DQNAgent(object):
     def choose_action(self, observation):
         state = T.tensor([observation], dtype=T.float).to(self.q_eval.device)
         evals = self.q_eval.forward(state, None)
-        
+        a = T.tensor([])
+        for head_eval in evals:
+            a = T.cat((a, head_eval), dim=0)
+        evals = a
         action_means = T.mean(evals, dim=0)
         best_action = T.argmax(action_means).item()
         uncertainty = T.var(evals, dim=0)[best_action].item()
@@ -97,8 +106,6 @@ class DQNAgent(object):
         self.q_eval.load_checkpoint()
         self.q_next.load_checkpoint()
 
-
-  
 
     def learn(self):
         if self.memory.mem_cntr < self.batch_size:
