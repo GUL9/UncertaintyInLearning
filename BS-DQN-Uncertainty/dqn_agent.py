@@ -6,7 +6,7 @@ from replay_memory import ReplayBuffer
 
 class DQNAgent(object):
     def __init__(self, gamma, epsilon, lr, n_actions, input_dims,
-                 mem_size, batch_size, eps_min=0.01, eps_dec=5e-7, n_ensemble=5,
+                 mem_size, batch_size, uncertainty_threshold=0.1, eps_min=0.01, eps_dec=5e-7, n_ensemble=5, prior_scale=1.0,
                  replace=1000, algo=None, env_name=None, chkpt_dir='models/'):
 
         self.env_name = env_name
@@ -37,10 +37,10 @@ class DQNAgent(object):
         self.q_next = EnsembleNet(chkpt_dir=chkpt_dir, name=self.env_name + '_' + self.algo + '_q_next', n_ensemble=self.n_ensemble, n_actions=self.n_actions, lr=self.lr, input_dims=self.input_dims)
 
         self.q_prior.init_heads()
-        self.q_eval = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_q_eval', self.q_eval, self.q_prior, prior_scale=10, lr=lr)
-        self.q_next = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_q_next', self.q_next, self.q_prior, prior_scale=10, lr=lr)
+        self.q_eval = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_q_eval', self.q_eval, self.q_prior, prior_scale=prior_scale, lr=lr)
+        self.q_next = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_q_next', self.q_next, self.q_prior, prior_scale=prior_scale, lr=lr)
 
-        self.q_advice = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name='PongNoFrameskip-v4_DQNAgent_q_eval', input_dims=self.input_dims, chkpt_dir=self.advice_dir)
+        self.q_advice = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name='PongNoFrameskip-v4_DQNAgent300Games_q_eval', input_dims=self.input_dims, chkpt_dir=self.advice_dir)
         self.q_advice.load_checkpoint()
     
 
