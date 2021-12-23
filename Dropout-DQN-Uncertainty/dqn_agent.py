@@ -33,7 +33,7 @@ class DQNAgent(object):
 
         self.q_eval = DropoutQNetwork(lr=self.lr, n_actions=self.n_actions, name=self.env_name+'_'+self.algo+'_q_eval', input_dims=self.input_dims, chkpt_dir=self.chkpt_dir)
         self.q_next = DropoutQNetwork(lr=self.lr, n_actions=self.n_actions, name=self.env_name+'_'+self.algo+'_q_next', input_dims=self.input_dims, chkpt_dir=self.chkpt_dir)
-        self.q_advice = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name='PongNoFrameskip-v4_DQNAgent_q_eval', input_dims=self.input_dims, chkpt_dir=self.advice_dir)
+        self.q_advice = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name='PongNoFrameskip-v4_DQNAgent300Games_q_eval', input_dims=self.input_dims, chkpt_dir=self.advice_dir)
         self.q_advice.load_checkpoint()
     
 
