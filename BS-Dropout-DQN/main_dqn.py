@@ -69,6 +69,6 @@ if __name__ == '__main__':
 
         eps_history.append(agent.epsilon)
 
-
+    agent.save_models()
     save_scores_csv(scores, eps_history, score_file, budget=budget, uncertainty=uncertainties)
     plot_learning_curve(steps_array, scores, eps_history, figure_file)
