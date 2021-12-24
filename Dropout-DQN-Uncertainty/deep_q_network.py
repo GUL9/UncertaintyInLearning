@@ -21,7 +21,7 @@ class DropoutQNetwork(nn.Module):
         self.fc2 = nn.Linear(512, n_actions)
 
         self.optimizer = optim.RMSprop(self.parameters(), lr=lr)
-        self.dropout = nn.Dropout(0.1)
+        self.dropout = nn.Dropout(0.2)
 
         self.loss = nn.MSELoss()
         self.device = T.device('cuda:0' if T.cuda.is_available() else 'cpu')

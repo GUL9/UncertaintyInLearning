@@ -15,7 +15,7 @@ if __name__ == '__main__':
                      input_dims=(env.observation_space.shape),
                      n_actions=env.action_space.n, mem_size=50000, eps_min=0.05,
                      batch_size=32, replace=1000, eps_dec=1e-5,
-                     chkpt_dir='models/', algo='DropoutAgentP01UQ01',
+                     chkpt_dir='models/', algo='DropoutAgentP02UQ01',
                      env_name='PongNoFrameskip-v4')
 
     if load_checkpoint:
@@ -70,6 +70,6 @@ if __name__ == '__main__':
 
         eps_history.append(agent.epsilon)
 
-
+    agent.save_models()
     save_scores_csv(scores, eps_history, score_file, budget=budget, uncertainty=uncertainties)
     plot_learning_curve(steps_array, scores, eps_history, figure_file)
