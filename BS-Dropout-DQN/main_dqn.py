@@ -27,17 +27,19 @@ if __name__ == '__main__':
     # and uncomment the following 2 lines.
     env = wrappers.Monitor(env, "tmp/dqn-video", video_callable=lambda episode_id: True, force=True)
     n_steps = 0
-    scores, eps_history, steps_array, budget, uncertainties = [], [], [], [], []
+    scores, eps_history, steps_array, budget, uncertainties, e_uncertainties, a_uncertainties = [], [], [], [], [], [], []
 
     for i in range(n_games):
         done = False
         observation = env.reset()
 
         score = 0
-        game_uncertainty = []
+        game_uncertainty, game_e_uncertainty, game_a_uncertainty = [], [], []
         while not done:
-            action, uncertainty = agent.choose_action(observation)
+            action, uncertainty, e_uncertainty, a_uncertainty = agent.choose_action(observation)
             game_uncertainty.append(uncertainty)
+            game_e_uncertainty.append(e_uncertainty)
+            game_a_uncertainty.append(a_uncertainty)
             env.render()
             observation_, reward, done, info = env.step(action)
             score += reward
@@ -48,6 +50,8 @@ if __name__ == '__main__':
             observation = observation_
             n_steps += 1
         uncertainties.append(np.mean(game_uncertainty))
+        e_uncertainties.append(np.mean(game_e_uncertainty))
+        a_uncertainties.append(np.mean(game_a_uncertainty))
         budget.append(agent.advice_budget)
         scores.append(score)
         steps_array.append(n_steps)
@@ -60,7 +64,9 @@ if __name__ == '__main__':
             'epsilon: %.2f' % agent.epsilon,
             'steps:', n_steps,
             'budget:', budget[-1],
-            'uncertainty: %.4f ' % uncertainties[-1])
+            'uncertainty: %.4f ' % uncertainties[-1],
+            'e_uncertainty: %.4f ' % e_uncertainties[-1],
+            'a_uncertainty: %.4f ' % a_uncertainties[-1])
 
         if avg_score > best_score:
             if not load_checkpoint:
@@ -70,5 +76,5 @@ if __name__ == '__main__':
         eps_history.append(agent.epsilon)
 
     agent.save_models()
-    save_scores_csv(scores, eps_history, score_file, budget=budget, uncertainty=uncertainties)
+    save_scores_csv(scores, eps_history, score_file, budget=budget, uncertainty=uncertainties, epistemic=e_uncertainties, aleatoric=a_uncertainties)
     plot_learning_curve(steps_array, scores, eps_history, figure_file)

@@ -37,13 +37,13 @@ class BSDropoutAgent(object):
         self.e_next = EnsembleNet(chkpt_dir=chkpt_dir, name=self.env_name + '_' + self.algo + '_e_next', n_ensemble=self.n_ensemble, n_actions=self.n_actions, lr=self.lr, input_dims=self.input_dims)
 
         self.e_prior.init_heads()
-        self.e_eval = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_q_eval', self.e_eval, self.e_prior, prior_scale=11, lr=lr)
-        self.e_next = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_q_next', self.e_next, self.e_prior, prior_scale=11, lr=lr)
+        self.e_eval = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_e_eval', self.e_eval, self.e_prior, prior_scale=11, lr=lr)
+        self.e_next = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_e_next', self.e_next, self.e_prior, prior_scale=11, lr=lr)
 
         self.a_eval = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name= self.env_name + '_' + self.algo + '_a_eval', input_dims=self.input_dims, chkpt_dir=chkpt_dir)
         self.a_next = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name= self.env_name + '_' + self.algo + '_a_next', input_dims=self.input_dims, chkpt_dir=chkpt_dir)
 
-        self.q_advice = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name='PongNoFrameskip-v4_DQNAgent_q_eval', input_dims=self.input_dims, chkpt_dir=self.advice_dir)
+        self.q_advice = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name='PongNoFrameskip-v4_DQNAgent300Games_q_eval', input_dims=self.input_dims, chkpt_dir=self.advice_dir)
         self.q_advice.load_checkpoint()
     
 
@@ -59,7 +59,7 @@ class BSDropoutAgent(object):
             action = self._std_policy(e_evals, a_evals)
         else:
             action = self._advice_policy(state)
-        return action, uncertainty
+        return action, uncertainty, e_uncertainty, a_uncertainty
 
     def _aleatoric_uncertainty(self, state):
         evals = T.tensor([]).to(self.a_eval.device)
@@ -73,7 +73,7 @@ class BSDropoutAgent(object):
 
     def _epistemic_uncertainty(self, state):
         evals = self.e_eval.forward(state, None)
-        evals_ = T.tensor([])
+        evals_ = T.tensor([]).to(self.e_eval.device)
         for head_eval in evals:
             evals_ = T.cat((evals_, head_eval), dim=0)
         evals = evals_
