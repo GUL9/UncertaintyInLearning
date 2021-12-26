@@ -20,6 +20,9 @@ class DQNAgent(object):
         self.eps_dec = eps_dec
         self.lr = lr
 
+        self.uncertainty_threshold = uncertainty_threshold
+        self.prior_scale = prior_scale
+
         self.n_ensemble = n_ensemble
         self.n_actions = n_actions
         self.action_space = [i for i in range(n_actions)]
@@ -37,8 +40,8 @@ class DQNAgent(object):
         self.q_next = EnsembleNet(chkpt_dir=chkpt_dir, name=self.env_name + '_' + self.algo + '_q_next', n_ensemble=self.n_ensemble, n_actions=self.n_actions, lr=self.lr, input_dims=self.input_dims)
 
         self.q_prior.init_heads()
-        self.q_eval = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_q_eval', self.q_eval, self.q_prior, prior_scale=prior_scale, lr=lr)
-        self.q_next = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_q_next', self.q_next, self.q_prior, prior_scale=prior_scale, lr=lr)
+        self.q_eval = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_q_eval', self.q_eval, self.q_prior, prior_scale=self.prior_scale, lr=lr)
+        self.q_next = EnsembleWithPrior(chkpt_dir + self.env_name + '_' + self.algo + '_q_next', self.q_next, self.q_prior, prior_scale=self.prior_scale, lr=lr)
 
         self.q_advice = DeepQNetwork(lr=self.lr, n_actions=self.n_actions, name='PongNoFrameskip-v4_DQNAgent300Games_q_eval', input_dims=self.input_dims, chkpt_dir=self.advice_dir)
         self.q_advice.load_checkpoint()
@@ -55,7 +58,7 @@ class DQNAgent(object):
         best_action = T.argmax(action_means).item()
         uncertainty = T.var(evals, dim=0)[best_action].item()
         
-        if uncertainty < 0.1 or self.advice_budget <= 0:
+        if uncertainty < self.uncertainty_threshold  or self.advice_budget <= 0:
             action = self._std_policy(best_action)
         else:
             action = self._advice_policy(state)

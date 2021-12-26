@@ -14,8 +14,8 @@ if __name__ == '__main__':
     agent = DQNAgent(gamma=0.99, epsilon=1, lr=0.0001,
                      input_dims=(env.observation_space.shape),
                      n_actions=env.action_space.n, mem_size=50000, eps_min=0.05,
-                     batch_size=32, replace=1000, uncertainty_threshold=0.05, eps_dec=1e-5, prior_scale=11,
-                     chkpt_dir='models/', algo='BSAgentUQ005Beta11',
+                     batch_size=32, replace=1000, uncertainty_threshold=0.1, eps_dec=1e-5, prior_scale=12,
+                     chkpt_dir='models/', algo='BSAgentUQ01Beta12',
                      env_name='PongNoFrameskip-v4')
 
     if load_checkpoint:
