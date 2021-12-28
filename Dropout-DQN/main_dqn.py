@@ -15,7 +15,7 @@ if __name__ == '__main__':
                      input_dims=(env.observation_space.shape),
                      n_actions=env.action_space.n, mem_size=50000, eps_min=0.05,
                      batch_size=32, replace=1000, eps_dec=1e-5,
-                     chkpt_dir='models/', algo='DropoutAgentP015UQ01',
+                     chkpt_dir='models/', algo='RERUNDropoutAgentP005UQ01',
                      env_name='PongNoFrameskip-v4')
 
     if load_checkpoint:
