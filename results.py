@@ -12,12 +12,6 @@ def read_results_from_dir(path_to_dir):
 
     return results
 
-def plot_dropout_scores(dropout_results):
-    dropout_scores = pd.merge(dropout_results[0], dropout_results[1],on='episode', suffixes=("_p005", "_p01"))
-    dropout_scores = pd.merge(dropout_scores, dropout_results[2], on='episode').rename(columns={'score': 'score_p015'})
-    dropout_scores.plot(x='episode', y=['score_p005', 'score_p01', 'score_p015'])
-    plt.show()
-
 def score_to_avg(df, window_size):
     sumbuff = np.zeros(window_size)
     for index, row in df.iterrows():
@@ -27,12 +21,36 @@ def score_to_avg(df, window_size):
 
     return df
 
+def score_to_cumsum(df, window_size):
+    sumbuff = np.zeros(window_size)
+    for index, row in df.iterrows():
+        sumbuff[index % window_size] = row['score']
+        row['score'] = np.sum(sumbuff)
+        df.iloc[index] = row
+
+    return df
+
+
+def plot_dropout_scores(dropout_results):
+    dropout_scores = pd.merge(dropout_results[0], dropout_results[1],on='episode', suffixes=("_p005", "_p01"))
+    dropout_scores = pd.merge(dropout_scores, dropout_results[2], on='episode').rename(columns={'score': 'score_p015'})
+    dropout_scores.plot(x='episode', y=['score_p005', 'score_p01', 'score_p015'])
+    plt.show()
+
 def plot_dropout_scores_avg(dropout_results, window_size):
     dropout_results = [score_to_avg(df, window_size) for df in dropout_results]
             
     dropout_scores = pd.merge(dropout_results[0], dropout_results[1],on='episode', suffixes=(f"_avg{window_size}_p005", f"_avg{window_size}_p01"))
     dropout_scores = pd.merge(dropout_scores, dropout_results[2], on='episode').rename(columns={'score': f'score_avg{window_size}_p015'})
     dropout_scores.plot(x='episode', y=[f'score_avg{window_size}_p005', f'score_avg{window_size}_p01', f'score_avg{window_size}_p015'])
+    plt.show()
+
+def plot_dropout_cumsum(dropout_results, window_size):
+    dropout_results = [score_to_cumsum(df, window_size) for df in dropout_results]
+            
+    dropout_scores = pd.merge(dropout_results[0], dropout_results[1],on='episode', suffixes=(f"_sum{window_size}_p005", f"_sum{window_size}_p01"))
+    dropout_scores = pd.merge(dropout_scores, dropout_results[2], on='episode').rename(columns={'score': f'score_sum{window_size}_p015'})
+    dropout_scores.plot(x='episode', y=[f'score_sum{window_size}_p005', f'score_sum{window_size}_p01', f'score_sum{window_size}_p015'])
     plt.show()
 
 def plot_bs_scores(bs_results,):
@@ -47,6 +65,14 @@ def plot_bs_scores_avg(bs_results, window_size):
     bs_scores = pd.merge(bs_results[0], bs_results[1],on='episode', suffixes=(f"_avg{window_size}_pscale10", f"_avg{window_size}_pscale11"))
     bs_scores = pd.merge(bs_scores, bs_results[2], on='episode').rename(columns={'score': f'score_avg{window_size}_pscale12'})
     bs_scores.plot(x='episode', y=[f'score_avg{window_size}_pscale10', f'score_avg{window_size}_pscale11', f'score_avg{window_size}_pscale12'])
+    plt.show()
+
+def plot_bs_cumsum(bs_results, window_size):
+    bs_results = [score_to_avg(df, window_size) for df in bs_results]
+            
+    bs_scores = pd.merge(bs_results[0], bs_results[1],on='episode', suffixes=(f"_sum{window_size}_pscale10", f"_sum{window_size}_pscale11"))
+    bs_scores = pd.merge(bs_scores, bs_results[2], on='episode').rename(columns={'score': f'score_sum{window_size}_pscale12'})
+    bs_scores.plot(x='episode', y=[f'score_sum{window_size}_pscale10', f'score_sum{window_size}_pscale11', f'score_sum{window_size}_pscale12'])
     plt.show()
 
 
@@ -64,6 +90,15 @@ def plot_scores_avg_compare_all(dqn_results, dropout_results, bs_results, bsd_re
     scores2 = pd.merge(avg_scores[2], avg_scores[3], on='episode', suffixes=('_avg_dropout_p01', '_avg_bs_pscale11'))
     scores = pd.merge(scores1, scores2, on='episode')
     scores.plot(x='episode', y=['score_avg_DQN', 'score_avg_bsd_p01_pscale11', 'score_avg_dropout_p01', 'score_avg_bs_pscale11'])
+    plt.show()
+
+def plot_scores_cumsum_compare_all(dqn_results, dropout_results, bs_results, bsd_results, window_size):
+    cumsum_scores = [score_to_cumsum(dqn_results[0], window_size), score_to_cumsum(bsd_results[0], window_size), score_to_cumsum(dropout_results[1], window_size), score_to_cumsum(bs_results[1],window_size)]
+
+    scores1 = pd.merge(cumsum_scores[0], cumsum_scores[1], on='episode', suffixes=('_cumsum_DQN', '_cumsum_bsd_p01_pscale11'))
+    scores2 = pd.merge(cumsum_scores[2], cumsum_scores[3], on='episode', suffixes=('_cumsum_dropout_p01', '_cumsum_bs_pscale11'))
+    scores = pd.merge(scores1, scores2, on='episode')
+    scores.plot(x='episode', y=['score_cumsum_DQN', 'score_cumsum_bsd_p01_pscale11', 'score_cumsum_dropout_p01', 'score_cumsum_bs_pscale11'])
     plt.show()
 
 def plot_uncertainties_all(dropout_results, bs_results, bsd_results):
@@ -105,20 +140,24 @@ dropout_results = read_results_from_dir(dropout_path)
 bs_results = read_results_from_dir(bs_path)
 bsd_results = read_results_from_dir(bsd_path)
 
-avg_window_size = 30
+avg_window_size = 300
 
 #plot_dropout_scores(dropout_results)
 #plot_dropout_scores_avg(dropout_results, avg_window_size)
+plot_dropout_cumsum(dropout_results, avg_window_size)
 
 #plot_bs_scores(bs_results)
 #plot_bs_scores_avg(bs_results, avg_window_size)
+plot_bs_cumsum(bs_results, avg_window_size)
+
 
 #plot_scores_compare_all(dqn_results, dropout_results, bs_results, bsd_results)
 #plot_scores_avg_compare_all(dqn_results, dropout_results, bs_results, bsd_results, avg_window_size)
+plot_scores_cumsum_compare_all(dqn_results, dropout_results, bs_results, bsd_results, avg_window_size)
 
 #plot_uncertainties_all(dropout_results, bs_results, bsd_results)
 
-plot_dropout_budgets(dropout_results)
+#plot_dropout_budgets(dropout_results)
 #plot_bs_budgets(bs_results)
 #plot_budgets_all(dropout_results, bs_results, bsd_results)
 
